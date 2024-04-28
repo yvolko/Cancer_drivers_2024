@@ -17,18 +17,7 @@ library(rtracklayer) # Needed to read GTF file
 setwd() #here write you information
 
 # Raw data, page 2, csv file
-data <- read.csv("CSV_Page_2_41586_2022_4738_MOESM3_ESM.csv")
-
-# FILTER DATA
-# Filter your data and prepare them for making genomic ranges
-copy_threshold_value <- 15 #It is how many copies of the region was found
-length_min <- 280000
-length_max <- 1900000
-data$region_length <- data$endpos-data$startpos
-filtered_data <- filter(data, nMajor >= copy_threshold_value)
-filtered_data <- filter(filtered_data, region_length >= length_min & region_length <= length_max)
-filtered_data <- filtered_data %>%
-  mutate(chr = paste("chr", chr, sep = ""))
+filtered_data <- read.csv("../../Data/Processed_data/Table_filtering_by_nMajor_and_length.csv")
 
 # Use Gencode V19 GTF file for annotation
 # Download from here: https://www.gencodegenes.org/human/release_19.html
