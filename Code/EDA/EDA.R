@@ -59,7 +59,7 @@ ggplot(length_nMajor_summary, aes(x = log(reg_length[,'mean'], base = 2), fill =
 
 df_filt_by_nMajor_and_length <- filter(df_filt_by_nMajor, reg_length >= 280000 & reg_length <= 1900000)[,-c(11:23)]
 
-write.csv(df_filt_by_nMajor_and_length, file = "../../Data/Raw_data/Table_filtering_by_nMajor_and_length.csv", row.names = FALSE)
+write.csv(df_filt_by_nMajor_and_length, file = "../../Data/Processed_data/Table_filtering_by_nMajor_and_length.csv", row.names = FALSE)
 
 # STATISTICS BY CANCER TYPES
 
