@@ -57,7 +57,7 @@ ggplot(length_nMajor_summary, aes(x = log(reg_length[,'mean'], base = 2), fill =
 
 # BASED ON PREVIOUS PLOT FILTERING REGIONS WITH LENGTH LESS THAN 280000 nb AND MORE THAN 1900000 nb
 
-df_filt_by_nMajor_and_length <- filter(df_filt_by_nMajor, reg_length >= 280000 & reg_length <= 1900000)
+df_filt_by_nMajor_and_length <- filter(df_filt_by_nMajor, reg_length >= 280000 & reg_length <= 1900000)[,-c(11:23)]
 
 write.csv(df_filt_by_nMajor_and_length, file = "../../Data/Raw_data/Table_filtering_by_nMajor_and_length", row.names = FALSE)
 
