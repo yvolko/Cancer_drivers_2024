@@ -2,6 +2,7 @@
 #install.packages('ggplot2')
 #install.packages('dplyr')
 #install.packages('tidyverse')
+#install.packages('Hmisc')
 
 
 #Libraries
@@ -9,6 +10,7 @@ library (readxl)
 library(ggplot2)
 library(dplyr)
 library(tidyverse)
+library(Hmisc)
 
 
 # IMPORT AND MERGE DATASETS
