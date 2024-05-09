@@ -1,0 +1,173 @@
+---
+title: "Analysis of TF and kinases among known oncogenes"
+date: "04.02.24"
+output: 
+  html_document:
+  latex_engine : xelatex
+df_print: default
+highlight: zenburn
+toc: FALSE
+mainfont : NanumGothic    
+editor_options: 
+  markdown: 
+  wrap: 72
+---
+  
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
+```
+
+```{r libraries, include=FALSE}
+library(knitr)
+library(dplyr)
+library(ggplot2)
+library(plotly)
+library(tidyr)
+library(VennDiagram)
+library(gridExtra)
+library(rvest)
+library(ggbreak) 
+library(patchwork) 
+```
+
+```{r setwd, include=FALSE}
+main_dir <- dirname(rstudioapi::getSourceEditorContext()$path) 
+setwd(main_dir)
+```
+
+### Data preparation
+
+```{r data import}
+TF <- read.csv("../../Data/Raw_data/Human_TFs.txt", sep="\t")
+COSMIC <- read.csv("../../Data/Raw_data/Cancer_Gene_census_COSMIC.tsv", sep = "\t")
+oncoKB <- read.csv("../../Data/Raw_data/cancerGeneList_OncoKB.tsv", sep = "\t")
+```
+
+
+### TFs (enrichment among oncogenes vs in all genes)
+
+Total TF:
+
+```{r TF count}
+total_TF <- length(unique(TF$HGNC.symbol))
+total_TF
+```
+
+In Gencode there are 20241 genes. TFs are 13.7%:
+
+```{r}
+276500/20241
+```
+Total oncogenes from COSMIC+oncoKB:
+
+```{r oncogenes count}
+COSMIC <- COSMIC[COSMIC$Role.in.Cancer %in% c(c("oncogene, fusion", "oncogene")), ]
+COSMIC_oncogenes <- COSMIC$Gene.Symbol
+oncoKB_oncogenes <- oncoKB$Hugo.Symbol[oncoKB$Is.Oncogene == "Yes" & oncoKB$Is.Tumor.Suppressor.Gene != "Yes"]
+oncogenes_total <- union(COSMIC_oncogenes, oncoKB_oncogenes)
+total_oncogenes <- length(oncogenes_total)
+total_oncogenes
+```
+
+How many oncogenes are TF (40.5%):
+
+```{r oncogenes are TF}
+oncogenes_TF <- intersect(oncogenes_total, unique(TF$HGNC.symbol))
+TFs_in_oncogenes <- length(oncogenes_TF)
+TFs_in_oncogenes
+```
+
+Do oncogenes more often appears TFs:
+
+```{r fisher test}
+set_1_TF <- 2765
+set_1_genes <- 20241 - 2765
+set_2_TF <- 181
+set_2_oncogenes <- 447 - 181
+
+contingency_table_TF <- matrix(c(set_2_TF, set_1_TF, set_2_oncogenes,
+                              set_1_genes),
+                            nrow = 2)
+colnames(contingency_table_TF) <- c('TF', 'not TF')
+rownames(contingency_table_TF) <- c('Oncogenes', 'All genes')
+
+fisher.test(contingency_table_TF)
+```
+
+
+### Kinase (enrichment among oncogenes vs in all genes)
+
+Total kinases:
+
+```{r kinase count}
+webpage <- read_html("http://www.kinhub.org/kinases.html")
+kinase <- html_table(webpage)[[1]]
+kinase <- kinase %>%
+  dplyr::select("xName", "HGNC Name", "Group", "Family")
+colnames(kinase)[2] <- "HGNC_Name"
+
+# Some kinases have no name in "HGNC Name" column, we take it than from "xName" column (impute missing values)
+
+kinase <- kinase %>%
+  mutate(HGNC_Name = ifelse(HGNC_Name == "", xName, HGNC_Name))
+
+# Some of values were not unique due to different columns (with their name) being different in the full data set
+# Let make them unique by using other column for naming of these
+
+kinase$Name <- ifelse(duplicated(kinase$HGNC_Name) & !duplicated(kinase$xName), kinase$xName, kinase$HGNC_Name)
+kinase <- kinase[, -c(1,2)]
+
+# Count total N of kinase
+
+length(unique(kinase$Name))
+```
+
+In Gencode there are 20241 genes. Kinases are 2.6%:
+
+```{r}
+53600/20241
+```
+
+Total oncogenes from COSMIC+oncoKB - 447.
+
+How many oncogenes are kinases (19%):
+
+```{r oncogenes are kinases}
+oncogenes_kinases <- intersect(oncogenes_total, unique(kinase$Name))
+kinases_in_oncogenes <- length(oncogenes_kinases)
+kinases_in_oncogenes
+```
+
+
+```{r fisher test 2}
+set_1_kinases <- 536
+set_1_genes <- 20241 - 536
+set_2_kinases <- 85
+set_2_oncogenes <- 447 - 85
+
+contingency_table_kinases <- matrix(c(set_2_kinases, set_1_kinases, set_2_oncogenes,
+                              set_1_genes),
+                            nrow = 2)
+
+colnames(contingency_table_kinases) <- c('Kinase', 'not Kinase')
+rownames(contingency_table_kinases) <- c('Oncogenes', 'All genes')
+
+fisher.test(contingency_table_kinases)
+```
+
+CONCLUSION: Known oncogenes have enrichment by kinases and TFs.
+
+## Visualize
+
+```{r}
+contingency_table_TF[1,] <- contingency_table_TF[1,]*100/(contingency_table_TF[1,1]+ contingency_table_TF[1,2])
+contingency_table_TF[2,] <- contingency_table_TF[2,]*100/(contingency_table_TF[2,1]+ contingency_table_TF[2,2])
+
+barplot(t(contingency_table_TF), beside = TRUE, col = c("#fed9a5", "#b3cee3"), legend = TRUE, ylab = "Genes (%)") 
+```
+```{r}
+contingency_table_kinases[1,] <- contingency_table_kinases[1,]*100/( contingency_table_kinases[1,1]+ contingency_table_kinases[1,2])
+contingency_table_kinases[2,] <- contingency_table_kinases[2,]*100/( contingency_table_kinases[2,1]+ contingency_table_kinases[2,2])
+
+barplot(t(contingency_table_kinases), beside = TRUE, col = c("#fed9a5", "#b3cee3"), legend = TRUE, ylab = "Genes (%)") 
+```
