@@ -1,0 +1,452 @@
+---
+title: "Metastatic data analysis"
+output: 
+  html_document:
+    latex_engine : xelatex
+    df_print: default
+    highlight: zenburn
+    toc: TRUE
+    toc_depth: 4
+mainfont : NanumGothic    
+editor_options: 
+  markdown: 
+    wrap: 72
+---
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r libraries, include=FALSE, echo=FALSE, warning=FALSE}
+library(dplyr)
+library(vcd)
+library(ggplot2)
+library(knitr)
+library(ggsignif)
+```
+
+# Data
+**ampl_region_count** - count of high copy number regions >= 15           
+**total_region_count** - total number of regions for a given patient          
+**ampl_frequency** - frequency of high copy number regions for a given patient              
+**is_ampl_region** - Absence/presence of regions with high copy numbers in the patient
+
+```{r data, echo=FALSE, warning=FALSE}
+metastatic_df <- read.csv('../../Data/Raw_data/metastasis_data/data_cna_hg19.seg', sep = '\t')
+
+meta_data_sample <- read.csv('../../Data/Raw_data//metastasis_data/data_clinical_sample.txt', sep = '\t')
+colnames(meta_data_sample) <- meta_data_sample[4,]
+meta_data_sample <- meta_data_sample[-c(1:4), ]
+
+meta_data_patient <- read.csv('../../Data/Raw_data//metastasis_data/data_clinical_patient.txt', sep = '\t')
+colnames(meta_data_patient) <- meta_data_patient[4,]
+meta_data_patient <- meta_data_patient[-c(1:4), ]
+metastatic_df$seg.mean <- 2^metastatic_df$seg.mean
+
+metastatic_df_with_meta <- left_join(metastatic_df, meta_data_sample, join_by(ID == SAMPLE_ID))
+metastatic_df_with_meta_filt <- filter(metastatic_df_with_meta, GENE_PANEL == 'IMPACT468')
+metastatic_df_with_meta_filt <- left_join(metastatic_df_with_meta_filt, meta_data_patient, by = 'PATIENT_ID')
+metastatic_df_with_meta_filt$region_length <- metastatic_df_with_meta_filt$loc.end - metastatic_df_with_meta_filt$loc.start
+
+metastatic_frequency <- metastatic_df_with_meta_filt %>%
+  group_by(PATIENT_ID) %>%
+  mutate(amplification = ifelse(seg.mean >= 15 & region_length >= 100000, 1, 0),
+         ampl_region_count = sum(amplification),
+         total_region_count = n(),
+         ampl_frequency = ampl_region_count/total_region_count,
+         SAMPLE_TYPE = ifelse(SAMPLE_TYPE == 'Primary' & IS_DIST_MET_MAPPED == TRUE, 'Metastatic_Primary', SAMPLE_TYPE))
+all_unique_patients <- metastatic_frequency %>%
+  distinct(PATIENT_ID, .keep_all = TRUE) %>%
+  mutate(is_ampl_region = ifelse(ampl_frequency > 0, 1, 0))
+kable(head(all_unique_patients[,c(7,59,60,61,62)]))
+
+```
+
+**Is_ampl** - count of high copy number regions (>=15)             
+**Not_ampl** - count of low copy number regions
+
+```{r first_matrix, echo=FALSE, warning=FALSE}
+Primary_ampl <- sum(filter(all_unique_patients, SAMPLE_TYPE == 'Primary')$is_ampl_region)
+Metastatic_primary_ampl <- sum(filter(all_unique_patients, SAMPLE_TYPE == 'Metastatic_Primary')$is_ampl_region)
+Metastasis_ampl <- sum(filter(all_unique_patients, SAMPLE_TYPE == 'Metastasis')$is_ampl_region)
+Primary_not_ampl <- length(filter(all_unique_patients, SAMPLE_TYPE == 'Primary')$is_ampl_region) - Primary_ampl
+Metastatic_primary_not_ampl <- length(filter(all_unique_patients, SAMPLE_TYPE == 'Metastatic_Primary')$is_ampl_region) - Metastatic_primary_ampl
+Metastasis_not_ampl <- length(filter(all_unique_patients, SAMPLE_TYPE == 'Metastasis')$is_ampl_region) - Metastasis_ampl
+
+my_matrix <- matrix(c(Primary_ampl, Metastatic_primary_ampl, Metastasis_ampl, Primary_not_ampl, 
+         Metastatic_primary_not_ampl, Metastasis_not_ampl), nrow = 3, ncol = 2)
+row.names(my_matrix) <- c('Primary', 'Metastatic_Primary', 'Metastsis')
+colnames(my_matrix) <- c('Is_ampl', 'Not_ampl')
+
+
+kable(my_matrix)
+```
+
+## Statistical analysis
+### Test results
+
+```{r Fisher}
+fisher_result <- fisher.test(my_matrix)
+chi_2 <- chisq.test(my_matrix, correct = TRUE)
+results_table <- data.frame(
+  Test = c("Fisher test", "Chi square test"),
+  `p-value` = c(fisher_result$p.value, chi_2$p.value)
+)
+kable(results_table)
+```
+
+
+
+```{r barplot, echo=FALSE, warning=FALSE}
+summary_df <- as.data.frame(my_matrix)
+summary_df$type <- row.names(summary_df)
+data_long <- tidyr::pivot_longer(summary_df, cols = c(Is_ampl, Not_ampl), names_to = "Region", values_to = "Count")
+data_long$Region <- ifelse(data_long$Region == 'Is_ampl', 'Proportion of regions with high copy number', 
+                           'Proportion of regions without high copy number')
+
+summary_df$freq <- summary_df$Is_ampl / (summary_df$Is_ampl + summary_df$Not_ampl)
+summary_df$type <- ifelse(summary_df$type == 'Metastsis', 'Metastasis', summary_df$type)
+summary_df$type <- factor(summary_df$type, levels = c('Metastasis', 'Metastatic_Primary', 'Primary'))
+
+ggplot(summary_df, aes(x = type, y = freq)) +
+  geom_bar(stat = "identity", position = "stack", fill = "#53868B") +
+  labs(x = "Type", y = "Percentage of samples with high copy region") +
+  scale_y_continuous(labels = scales::percent) +
+  geom_signif(comparisons = list(c('Metastasis', 'Metastatic_Primary')), y_position = 0.017, map_signif_level = TRUE,annotations="p-value = 0.058") +
+  geom_signif(comparisons = list(c('Metastasis', 'Primary')), y_position = 0.02, map_signif_level = TRUE,annotations="p-value = 0.002") +
+  geom_signif(comparisons = list(c('Metastatic_Primary', 'Primary')), y_position = 0.015, map_signif_level = TRUE,annotations="p-value = 0.086") +
+  theme_classic()
+
+```
+
+```{r 2x2_Fisher, echo=FALSE, warning=FALSE}
+first_pair <- my_matrix[1:2,]
+fisher_result <- fisher.test(first_pair)
+chi_2 <- chisq.test(first_pair, correct = TRUE)
+results_table <- data.frame(
+  Pairs = c('Primary vs Metastatic_Primary', 'Primary vs Metastatic_Primary'),
+  Test = c("Fisher test", "Chi square test"),
+  `p-value` = c(fisher_result$p.value, chi_2$p.value)
+)
+
+second_pair <- my_matrix[2:3,]
+fisher_result <- fisher.test(second_pair)
+chi_2 <- chisq.test(second_pair, correct = TRUE)
+results_table <- rbind(results_table, data.frame(
+  Pairs = c('Metastatic_Primary vs Metastasis', 'Metastatic_Primary vs Metastasis'),
+  Test = c("Fisher test", "Chi square test"),
+  `p-value` = c(fisher_result$p.value, chi_2$p.value)
+))
+
+third_pair <- my_matrix[c(1,3),]
+fisher_result <- fisher.test(third_pair)
+chi_2 <- chisq.test(third_pair, correct = TRUE)
+results_table <- rbind(results_table, data.frame(
+  Pairs = c('Primary vs Metastasis', 'Primary vs Metastasis'),
+  Test = c("Fisher test", "Chi square test"),
+  `p-value` = c(fisher_result$p.value, chi_2$p.value)
+))
+
+kable(results_table)
+```
+
+
+
+```{r wilcox_test}
+wilcox_type_result <- pairwise.wilcox.test(all_unique_patients$ampl_frequency, all_unique_patients$SAMPLE_TYPE, p.adjust.method = 'BH', alternative = 'less')
+kable(wilcox_type_result$p.value)
+```
+
+In primary cancer without identified metastases, the number of high copy number regions is lower than in cancer with an unknown primary location and primary cancer with metastases.
+
+Moreover, according to the results of the Wilcoxon test, there is a difference between all three groups
+
+### Five most common localizations of primary tumor
+
+```{r organs, include=FALSE, echo=FALSE, warning=FALSE}
+top_5_values <- names(sort(table(all_unique_patients$ORGAN_SYSTEM), decreasing = TRUE))[1:5]
+top_5_metastatic_organs <- filter(all_unique_patients, ORGAN_SYSTEM %in% top_5_values)
+top_5_organs_procent <- length(top_5_metastatic_organs$ID)/length(all_unique_patients$ID) * 100
+```
+
+Five most common localization: `r top_5_values`.      
+**Core GI** - esophagus, stomach, intestinum.        
+**Developmental GI Tract** - gallbladder, liver, pancreas       
+**`r top_5_organs_procent`%** patients have primary tumors of these locations
+
+```{r top_5_matrix, warning=FALSE, echo=FALSE}
+summary_df <- top_5_metastatic_organs %>%
+  group_by(ORGAN_SYSTEM) %>%
+  summarize(
+    ampl_count = sum(is_ampl_region),
+    not_ampl_count = n() - sum(is_ampl_region)
+  )
+
+
+my_matrix_5 <- as.matrix(summary_df[,2:3])
+row.names(my_matrix_5) <- summary_df$ORGAN_SYSTEM
+
+#Распределение результатов
+kable(my_matrix_5)
+```
+
+```{r top_5_test, , warning=FALSE, echo=FALSE}
+
+fisher_top_5 <- fisher.test(my_matrix_5, simulate.p.value=TRUE)
+chisq_top_5 <- chisq.test(my_matrix_5, correct = TRUE)
+results_table_top_5 <- data.frame(
+  Test = c("Fisher test", "Chi square test"),
+  `p-value` = c(fisher_top_5$p.value, chisq_top_5$p.value)
+)
+kable(results_table_top_5)
+```
+
+```{r bar_organs, echo=FALSE}
+summary_df <- as.data.frame(my_matrix_5)
+summary_df$organ <- row.names(summary_df)
+data_long <- tidyr::pivot_longer(summary_df, cols = c(ampl_count, not_ampl_count), names_to = "Region", values_to = "Count")
+data_long$Region <- ifelse(data_long$Region == 'ampl_count', 'Proportion of regions with high copy number', 'Proportion of regions without high copy number')
+ggplot(data_long, aes(x = organ, y = Count, fill = Region)) +
+  geom_bar(stat = "identity", position = "fill") +
+  labs(title = "Barplot", x = "System", y = "Count", fill = '') +
+  theme_minimal() + 
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
+
+Let's see between which organ systems there is a difference in the number of regions with high copy numbers
+
+```{r 2x2_Fisher_organs, echo=FALSE, warning=FALSE}
+df <- summary_df
+comparison_results <- data.frame()
+for (i in 1:(nrow(df)-1)) {
+  for (j in (i+1):nrow(df)) {
+    contingency_table <- matrix(c(df$ampl_count[i], df$ampl_count[j], df$not_ampl_count[i], df$not_ampl_count[j]), nrow = 2)
+    chi_sq_test <- chisq.test(contingency_table)
+    fisher_test_organ <- fisher.test(contingency_table)
+    result <- data.frame(
+      Group1 = df$organ[i],
+      Group2 = df$organ[j],
+      chi_p_value = chi_sq_test$p.value,
+      fisher_p_value = fisher_test_organ$p.value
+    )
+    comparison_results <- rbind(comparison_results, result)
+  }
+}
+kable(comparison_results)
+```
+
+Tests confirm the predominance of high copy number regions determined by barplot in tumors with primary localization in the primary derivatives of the intestinal tube (Core GI) and the genitourinary system.
+
+Now let’s look at whether the Fisher and chi-square tests show a difference by type (primary, primary with metastases, metastases). 
+
+```{r organs_metastasis, echo=FALSE, warning=FALSE}
+summary_df <- top_5_metastatic_organs %>%
+  group_by(SAMPLE_TYPE) %>%
+  summarize(
+    ampl_count = sum(is_ampl_region),
+    not_ampl_count = n() - sum(is_ampl_region)
+  )
+
+my_matrix <- as.matrix(summary_df[,2:3])
+row.names(my_matrix) <- summary_df$SAMPLE_TYPE
+
+
+fisher_result <- fisher.test(my_matrix)
+chi_2 <- chisq.test(my_matrix, correct = TRUE)
+results_table <- data.frame(
+  Pairs = c('All groups', 'All groups'),
+  Test = c("Fisher test", "Chi square test"),
+  `p-value` = c(fisher_result$p.value, chi_2$p.value)
+)
+
+
+first_pair <- my_matrix[1:2,]
+fisher_result <- fisher.test(first_pair)
+chi_2 <- chisq.test(first_pair, correct = TRUE)
+results_table <- rbind(results_table, data.frame(
+  Pairs = c('Metastasis vs Metastatic_Primary', 'Metastasis vs Metastatic_Primary'),
+  Test = c("Fisher test", "Chi square test"),
+  `p-value` = c(fisher_result$p.value, chi_2$p.value)
+))
+
+second_pair <- my_matrix[2:3,]
+fisher_result <- fisher.test(second_pair)
+chi_2 <- chisq.test(second_pair, correct = TRUE)
+results_table <- rbind(results_table, data.frame(
+  Pairs = c('Metastatic_Primary vs Primary', 'Metastatic_Primary vs Primary'),
+  Test = c("Fisher test", "Chi square test"),
+  `p-value` = c(fisher_result$p.value, chi_2$p.value)
+))
+
+third_pair <- my_matrix[c(1,3),]
+fisher_result <- fisher.test(third_pair)
+chi_2 <- chisq.test(third_pair, correct = TRUE)
+results_table <- rbind(results_table, data.frame(
+  Pairs = c('Primary vs Metastasis', 'Primary vs Metastasis'),
+  Test = c("Fisher test", "Chi square test"),
+  `p-value` = c(fisher_result$p.value, chi_2$p.value)
+))
+
+kable(results_table)
+
+```
+
+```{r wilcox_test_organs, echo=FALSE, warning=FALSE}
+wilcox_type_result <- pairwise.wilcox.test(top_5_metastatic_organs$ampl_frequency, top_5_metastatic_organs$SAMPLE_TYPE, p.adjust.method = 'BH', alternative = 'less' )
+kable(wilcox_type_result$p.value)
+```
+
+Similar to the full sample, when selecting only the 5 most common primary organ systems, the most regions with high copy numbers are found in patients only with identified metastases.
+
+### Five most common morphological types
+
+```{r subtype, echo=FALSE, include=FALSE, warning=FALSE}
+top_5_values_subtype <- names(sort(table(all_unique_patients$SUBTYPE), decreasing = TRUE))[1:5]
+top_5_metastatic_subtype <- filter(all_unique_patients, SUBTYPE %in% top_5_values_subtype)
+top_5_subtype_procent <- length(top_5_metastatic_subtype$ID)/length(all_unique_patients$ID) * 100
+```
+
+Five most common morphological types: `r top_5_values_subtype`.       
+**`r top_5_subtype_procent`%** patients have primary tumors of these morphological types
+
+```{r subtype_data, echo=FALSE, warning=FALSE}
+summary_df_subtype <- top_5_metastatic_subtype %>%
+  group_by(SUBTYPE) %>%
+  summarize(
+    ampl_count = sum(is_ampl_region),
+    not_ampl_count = n() - sum(is_ampl_region)
+  )
+
+
+my_matrix_subtype <- as.matrix(summary_df_subtype[,2:3])
+row.names(my_matrix_subtype) <- summary_df_subtype$SUBTYPE
+kable(my_matrix_subtype)
+```
+
+
+```{r subtype_test, echo=FALSE, warning=FALSE}
+fisher_subtype <- fisher.test(my_matrix_subtype)
+
+chisq_subtype <- chisq.test(my_matrix_subtype, correct = TRUE)
+
+results_table_top_5 <- data.frame(
+  Test = c("Fisher test", "Chi square test"),
+  `p-value` = c(fisher_subtype$p.value, chisq_subtype$p.value)
+)
+kable(results_table_top_5)
+```
+
+It is interesting that there was a difference between the various morphological types. The number of regions with high amplification in prostate adenocarcinoma is higher than in colorectal, lung and pancreatic adenocarcinomas
+
+```{r subtype_wilcox, warning=FALSE}
+wilcox_result <- pairwise.wilcox.test(top_5_metastatic_subtype$ampl_frequency, top_5_metastatic_subtype$SUBTYPE, p.adjust.method = 'BH', alternative = 'greater')
+kable(wilcox_result$p.value)
+```
+
+It is possible that in our data the frequency of prostate adenocarcinoma with metastases is higher than for other morphological types
+
+```{r met_subtype, warning=FALSE, echo=FALSE}
+summary_df_subtype_metastasis <- top_5_metastatic_subtype %>%
+  group_by(SUBTYPE) %>%
+  summarize(
+    with_metastasis = sum(IS_DIST_MET_MAPPED == 'TRUE'),
+    without_metastasis = n() - with_metastasis
+  )
+
+
+my_matrix_subtype_met <- as.matrix(summary_df_subtype_metastasis[,2:3])
+row.names(my_matrix_subtype_met) <- summary_df_subtype$SUBTYPE
+kable(my_matrix_subtype_met)
+```
+
+```{r mosaic_2, echo=FALSE}
+summary_df <- as.data.frame(my_matrix_subtype_met)
+summary_df$subtype <- row.names(summary_df)
+data_long <- tidyr::pivot_longer(summary_df, cols = c(with_metastasis, without_metastasis), names_to = "Status", values_to = "Count")
+data_long$Status <- ifelse(data_long$Status == 'with_metastasis', 'Proportion of patients with metastasis', 
+                           'Proportion of patients without metastasis')
+ggplot(data_long, aes(x = subtype, y = Count, fill = Status)) +
+  geom_bar(stat = "identity", position = "fill") +
+  labs(title = "Barplot", x = "Morphological type", y = "Count", fill = '') +
+  theme_minimal() + 
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
+
+In general, yes, metastases are a common event in prostate cancer, but they are inferior to breast cancer and on a par with lung cancer. Accordingly, the predominance of regions with high copy numbers in prostate adenocarcinoma is not associated with the frequency of metastasis of this tumor
+
+Let's see if there are differences in the number of regions with high copy numbers when distinguishing three types of metastases in the 5 most common morphological types
+
+```{r subtype_data_met, echo=FALSE, warning=FALSE}
+summary_df_subtype <- top_5_metastatic_subtype %>%
+  group_by(SAMPLE_TYPE) %>%
+  summarize(
+    ampl_count = sum(is_ampl_region),
+    not_ampl_count = n() - sum(is_ampl_region)
+  )
+
+
+my_matrix_subtype <- as.matrix(summary_df_subtype[,2:3])
+row.names(my_matrix_subtype) <- summary_df_subtype$SAMPLE_TYPE
+kable(my_matrix_subtype)
+```
+
+```{r barplot_2, echo=FALSE}
+summary_df <- as.data.frame(my_matrix_subtype)
+summary_df$subtype <- row.names(summary_df)
+data_long <- tidyr::pivot_longer(summary_df, cols = c(ampl_count, not_ampl_count), names_to = "Status", values_to = "Count")
+data_long$Status <- ifelse(data_long$Status == 'ampl_count', 'Proportion of patients with regions of high copy number', 'Proportion of patients without regions of high copy number')
+ggplot(data_long, aes(x = subtype, y = Count, fill = Status)) +
+  geom_bar(stat = "identity", position = "fill") +
+  labs(title = "Barplot", x = "Type", y = "Count", fill = '') +
+  theme_minimal() + 
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
+
+
+```{r subtype_test_met, echo=FALSE, warning=FALSE}
+my_matrix <- my_matrix_subtype
+fisher_result <- fisher.test(my_matrix)
+chi_2 <- chisq.test(my_matrix, correct = TRUE)
+results_table <- data.frame(
+  Pairs = c('All groups', 'All groups'),
+  Test = c("Fisher test", "Chi square test"),
+  `p-value` = c(fisher_result$p.value, chi_2$p.value)
+)
+
+
+first_pair <- my_matrix[1:2,]
+fisher_result <- fisher.test(first_pair)
+chi_2 <- chisq.test(first_pair, correct = TRUE)
+results_table <- rbind(results_table, data.frame(
+  Pairs = c('Metastasis vs Metastatic_Primary', 'Metastasis vs Metastatic_Primary'),
+  Test = c("Fisher test", "Chi square test"),
+  `p-value` = c(fisher_result$p.value, chi_2$p.value)
+))
+
+second_pair <- my_matrix[2:3,]
+fisher_result <- fisher.test(second_pair)
+chi_2 <- chisq.test(second_pair, correct = TRUE)
+results_table <- rbind(results_table, data.frame(
+  Pairs = c('Metastatic_Primary vs Primary', 'Metastatic_Primary vs Primary'),
+  Test = c("Fisher test", "Chi square test"),
+  `p-value` = c(fisher_result$p.value, chi_2$p.value)
+))
+
+third_pair <- my_matrix[c(1,3),]
+fisher_result <- fisher.test(third_pair)
+chi_2 <- chisq.test(third_pair, correct = TRUE)
+results_table <- rbind(results_table, data.frame(
+  Pairs = c('Primary vs Metastasis', 'Primary vs Metastasis'),
+  Test = c("Fisher test", "Chi square test"),
+  `p-value` = c(fisher_result$p.value, chi_2$p.value)
+))
+
+kable(results_table)
+```
+```{r wilcox_2}
+wilcox_type_result <- pairwise.wilcox.test(top_5_metastatic_subtype$ampl_frequency, top_5_metastatic_subtype$SAMPLE_TYPE, p.adjust.method = 'BH', alternative = 'less' )
+kable(wilcox_type_result$p.value)
+```
+
+Here we see that when selecting the 5 most common morphological types, the difference in the number of high copy number regions between the metastasis group and the others becomes even more significant. At the same time, according to the Wilcoxaon test, a difference appears between all groups.
