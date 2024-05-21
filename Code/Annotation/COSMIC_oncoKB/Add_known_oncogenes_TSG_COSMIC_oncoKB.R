@@ -6,9 +6,9 @@ setwd() #here write you information
 
 # IMPORT DATASETS (keep information about oncogenes and TSG)
 
-data <- read.csv("./result_files/Table_with_gene_names_from_gencode.csv")
-COSMIC <- read.csv("Cancer_Gene_census_COSMIC.tsv", sep = "\t")
-oncoKB <- read.csv("cancerGeneList_OncoKB.tsv", sep = "\t")
+data <- read.csv("../../../Data/Processed_data/table_with_gene_expr.csv")
+COSMIC <- read.csv("../../../Data/Raw_data/Cancer_Gene_census_COSMIC.tsv", sep = "\t")
+oncoKB <- read.csv("../../../Data/Raw_data/cancerGeneList_OncoKB.tsv", sep = "\t")
 
 # KEEP ONLY RELATED COLUMNS
 
@@ -39,5 +39,5 @@ data_with_COSMIC_oncoKB <- data_with_COSMIC_oncoKB %>%
 
 # EXPORT TABLE
 
-write.csv(data_with_COSMIC_oncoKB, file = "Table_COSMIC_oncoKB_oncogenes_TSG.csv", row.names = FALSE)
+write.csv(data_with_COSMIC_oncoKB, file = "../../../Data/Processed_data/Table_COSMIC_oncoKB_oncogenes_TSG.csv", row.names = FALSE)
 
