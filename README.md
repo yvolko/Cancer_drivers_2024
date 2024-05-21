@@ -7,6 +7,23 @@ Extrachromosomal DNA (ecDNA) is circular DNA outside of chromosomes. It has been
 Identify novel cancer drivers and progression genes located in the regions of genome with high-level amplifications.
 ## Methods and Pipeline
 Two datasets were used for the study: ASCAT copy number profiles for WES TCGA Pan-Cancer dataset containing data of 9699 patients [1] and copy number profiles for targeted DNA sequencing using gene panel IMPACT-468 containing data of 17602 patients with primary and metastatic cancer [2]. Genes located in the high-level amplification regions were annotated as presented in the pipeline.
+<br>
+<br>
 ![Pipeline](./pipline_split_in_two_small.png)
+<br>
+<br>
 Three approaches have been used for the identification of putative cancer driver genes:
-1) *System of ranks:* all features characterising genes ranked for each region and genes with total rank above the ninth decile were selected as potential oncogenes. After that, all ranks were normalized within each region and divided into two datasets: a dataset containing regions with known oncogenes, and a dataset containing regions without known oncogenes. The first dataset has been used to train machine learning models such as RandomForestClassifier and Ensemble consisting of RandomForestClassifier, ExtraTreesClassifier, CatBoostClassifier, XGBRFClassifier and GaussianNB. Predictions were made on the second dataset. Genes with a probability of being oncogenes greater than 0.9 were selected as potential cancer driver genes. 
+1) *System of ranks:* all features characterizing genes were ranked for each region and genes with a total rank above the ninth decile were selected as potential oncogenes
+2) *RandomForestClassifier:* all ranks were normalized within each region and divided into two datasets: a dataset containing regions with known oncogenes (to train the model), and a dataset containing regions without known oncogenes (to apply the model for potential novel oncogenes prediction). Genes with a probability of being oncogenes greater than or equal to 0.9 were selected as potential cancer driver genes. 
+3) *Ensemble:* consists of RandomForestClassifier, ExtraTreesClassifier, CatBoostClassifier, XGBRFClassifier and GaussianNB. Data were prepared the same way as for RandomForestClassifier. A cutoff of 0.9 was applied the same way.
+## Results
+- Revealed that around 20% of cancer samples within cancer type had at least one high-amplification region (and they were present more often in metastatic samples vs primary cancers)
+- Found that more than half of high-amplification regions do not contain known oncogenes
+- Showed that high-level amplification regions are enriched with oncogenes
+- Investigated relevant features to find novel putative oncogenes in high-level amplification regions
+- Built models and identified genes candidates that may be rare genetic drivers of cancer progression 
+<br>
+<br>
+![Predictions_overlap](./VennDiagrammFor_3_techniques_predicted_onco.png)
+<br>
+<br>
