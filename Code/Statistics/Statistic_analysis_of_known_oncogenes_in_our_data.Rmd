@@ -54,7 +54,7 @@ data$coordinates <- paste(as.character(data$chr), ":", data$startpos, "-", data$
 count_per_region <- data %>%
   group_by(cancer_type, coordinates) %>%
   summarize(
-    n_oncogenes = sum(Role.in.Cancer.COSMIC %in% c("oncogene, fusion", "oncogene") | OncoKB.Annotated.oncoKB == "Yes")
+    n_oncogenes = sum(Role.in.Cancer.COSMIC %in% c("oncogene, fusion", "oncogene") | Is.Oncogene.oncoKB == "Yes")
   ) %>%
   ungroup()
 
@@ -77,7 +77,8 @@ summary_per_region_long$presence_of_oncogenes <- ifelse(summary_per_region_long$
 ggplot(summary_per_region_long, aes(fill=presence_of_oncogenes, y=Regions, x=`Cancer type`)) + 
     geom_bar(position=position_fill(reverse = TRUE), stat="identity") +
   scale_fill_manual(values = c("Regions with known oncogene" = "#53868a", 'Regions without known oncogene' = "#7ac4cd")) +
-  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1))
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1),
+        legend.position = "bottom")
 ```
 
 This many regions over all cancers got at least one oncogene:
@@ -91,13 +92,22 @@ This many regions over all cancers got NO oncogenes from COSMIC or oncoKB:
 ```{r}
 sum(summary_per_region$regions_without_oncogenes)
 ```
+
+```{r}
+sum(summary_per_region$regions_with_at_least_one_oncogene)*100/(sum(summary_per_region$regions_without_oncogenes)+ sum(summary_per_region$regions_with_at_least_one_oncogene))
+```
+
+```{r}
+median(summary_per_region$regions_with_at_least_one_oncogene*100/(summary_per_region$regions_with_at_least_one_oncogene+summary_per_region$regions_without_oncogenes))
+```
+
 ### Let's group data by cancer type and sample to see how many genes in our data are labeled as oncogenes
 
 ```{r distribution 4}
 cancer_sample_grouped_stats <- data %>%
   group_by(cancer_type, sample.x) %>%
   summarize(
-    oncogenes = sum(Role.in.Cancer.COSMIC %in% c("oncogene, fusion", "oncogene") | OncoKB.Annotated.oncoKB == "Yes")
+    oncogenes = sum(Role.in.Cancer.COSMIC %in% c("oncogene, fusion", "oncogene") | Is.Oncogene.oncoKB == "Yes")
   )
 
 cancer_sample_grouped_stats$oncogenes <- ifelse(cancer_sample_grouped_stats$oncogenes >0, 1, 0)
@@ -119,8 +129,16 @@ summary_per_samples_long$presence_of_oncogenes <- ifelse(summary_per_samples_lon
 ggplot(summary_per_samples_long, aes(fill=presence_of_oncogenes, y=Samples, x=`Cancer type`)) + 
     geom_bar(position=position_fill(reverse = TRUE), stat="identity") +
   scale_fill_manual(values = c("Samples with known oncogene" = "#53868a", 'Samples without known oncogene' = "#7ac4cd")) +
-  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1))
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1),
+        legend.position = "bottom")
 ```
+```{r}
+sum(summary_per_samples$samples_with_at_least_one_onco)*100/(sum(summary_per_samples$samples_with_at_least_one_onco)+ sum(summary_per_samples$samples_without_onco))
+```
+```{r}
+median(summary_per_samples$samples_with_at_least_one_onco*100/(summary_per_samples$samples_with_at_least_one_onco+ summary_per_samples$samples_without_onco))
+```
+
 
 ### Acessing distribution of region length and copy number for regions with at least one oncogene and without
 Of note: there are 3 regions that are exactly having the same borders within the same cancer type, but they are coming from different samples, their copy number is different. I take therefore mean of copy number. For other region it doesnt make any difference as they have only one sample. 
@@ -187,7 +205,7 @@ ggplot(count_per_region, aes(x=n_oncogenes)) +
 count_per_sample <- data %>%
   group_by(cancer_type, sample.x) %>%
   summarize(
-    oncogenes = sum(Role.in.Cancer.COSMIC %in% c("oncogene, fusion", "oncogene") | OncoKB.Annotated.oncoKB == "Yes")
+    oncogenes = sum(Role.in.Cancer.COSMIC %in% c("oncogene, fusion", "oncogene") | Is.Oncogene.oncoKB == "Yes")
   ) %>%
   ungroup()
 
@@ -206,7 +224,7 @@ All the exploratory statistic above was base on the oncogens present at least in
 cancer_sample_summary <- data %>%
   group_by(sample.x, cancer_type, coordinates) %>%
   summarize(
-    n_oncogenes = sum(Role.in.Cancer.COSMIC %in% c("oncogene, fusion", "oncogene") | OncoKB.Annotated.oncoKB == "Yes")
+    n_oncogenes = sum(Role.in.Cancer.COSMIC %in% c("oncogene, fusion", "oncogene") | Is.Oncogene.oncoKB == "Yes")
   ) %>%
   ungroup()
 
