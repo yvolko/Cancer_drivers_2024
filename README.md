@@ -27,3 +27,7 @@ Three approaches have been used for the identification of putative cancer driver
 ![Predictions_overlap](./VennDiagrammFor_3_techniques_predicted_onco.png)
 <br>
 <br>
+Full lists of predicted oncogenes can be found in Data/Result_data folder.
+## Bibliography
+1. Steele, C.D., Abbasi, A., Islam, S.M.A. et al. Signatures of copy number alterations in human cancer. Nature 606, 984–991 (2022).
+2. Nguyen, B., Fong, C., Luthra, A. et al. (2022). Genomic characterization of metastatic patterns from prospective clinical sequencing of 25,000 patients. Cell, 185(3), 563–575.e11. 
