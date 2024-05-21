@@ -11,7 +11,7 @@ Identify novel cancer drivers and progression genes located in the regions of ge
 Two datasets were used for the study: ASCAT copy number profiles for WES TCGA Pan-Cancer dataset containing data of 9699 patients [1] and copy number profiles for targeted DNA sequencing using gene panel IMPACT-468 containing data of 17602 patients with primary and metastatic cancer [2]. Genes located in the high-level amplification regions were annotated as presented in the pipeline.
 <br>
 <br>
-![Pipeline](./pipline_split_in_two_small.png)
+![Pipeline](images/pipline_split_in_two_small.png)
 <br>
 <br>
 Three approaches have been used for the identification of putative cancer driver genes:
@@ -25,7 +25,7 @@ Three approaches have been used for the identification of putative cancer driver
 - Investigated relevant features to find novel putative oncogenes in high-level amplification regions
 - Built models and identified genes candidates that may be rare genetic drivers of cancer progression
 
-<img src="./VennDiagrammFor_3_techniques_predicted_onco.png" alt="Predictions" width="400"/>
+<img src="images/VennDiagrammFor_3_techniques_predicted_onco.png" alt="Predictions" width="400"/>
 
 Full lists of predicted oncogenes can be found in Data/Result_data folder.
 ## Bibliography
