@@ -3,10 +3,8 @@ library(tidyr)
 
 # IMPORT DATASETS
 
-data <- read.csv("../result_files/Table_expr_merged_TF_kinase_CRISPR_min.csv")
-pubmed <- read.csv("./pubmed_data_260224.txt", sep="\t", header = TRUE)
-
-data <- select(data, -pubmed_cancer, -pubmed_growth, -pubmed_proliferation)
+data <- read.csv("../../../Data/Processed_data/Table_COSMIC_oncoKB_oncogenes_TSG.csv")
+pubmed <- read.csv("../../../Data/Raw_data/pubmed_data_260224.txt", sep="\t", header = TRUE)
 
 # MERGE PUBMED SERCH RESULTS INTO OUR DATA
 
@@ -14,4 +12,4 @@ data_pubmed <- left_join(data, pubmed, join_by("gene_name" == "gene"))
 
 # EXPORT
 
-write.csv(data_pubmed, file = "Table_version_240228.csv", row.names = FALSE)
+write.csv(data_pubmed, file = "../../../Data/Processed_data/Table_with_pubmed.csv", row.names = FALSE)
