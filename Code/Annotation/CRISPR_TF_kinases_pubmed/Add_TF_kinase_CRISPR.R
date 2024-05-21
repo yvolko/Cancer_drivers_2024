@@ -5,7 +5,7 @@ library(tibble)
 
 # IMPORT DATA
 
-data <- read.csv("./result_files/Table_expression_COSMIC_oncoKB_pubmed.csv")
+data <- read.csv("../../../Data/Processed_data/Table_with_pubmed.csv")
 
 # ADD INFORMATION ABOUT TRANSCRIPTIONAL FACTORS
 
@@ -76,4 +76,4 @@ data_TF_kinase_CRISPR <- left_join(data_TF_kinase, CRISPR_new, join_by("gene_nam
 
 # EXPORT FINAL DATAFRAME
 
-write.csv(data_TF_kinase_CRISPR, file = "Table_expr_merged_TF_kinase_CRISPR.csv", row.names = FALSE)
+write.csv(data_TF_kinase_CRISPR, file = "Table_TF_kinase_CRISPR.csv", row.names = FALSE)
