@@ -23,12 +23,10 @@ Three approaches have been used for the identification of putative cancer driver
 - Found that more than half of high-amplification regions do not contain known oncogenes
 - Showed that high-level amplification regions are enriched with oncogenes
 - Investigated relevant features to find novel putative oncogenes in high-level amplification regions
-- Built models and identified genes candidates that may be rare genetic drivers of cancer progression 
-<br>
-<br>
-![Predictions](/VennDiagrammFor_3_techniques_predicted_onco.png)
-<br>
-<br>
+- Built models and identified genes candidates that may be rare genetic drivers of cancer progression
+
+<img src="./VennDiagrammFor_3_techniques_predicted_onco.png" alt="Predictions" width="400"/>
+
 Full lists of predicted oncogenes can be found in Data/Result_data folder.
 ## Bibliography
 1. Steele, C.D., Abbasi, A., Islam, S.M.A. et al. Signatures of copy number alterations in human cancer. Nature 606, 984–991 (2022).
