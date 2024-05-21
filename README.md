@@ -26,7 +26,7 @@ Three approaches have been used for the identification of putative cancer driver
 - Built models and identified genes candidates that may be rare genetic drivers of cancer progression 
 <br>
 <br>
-![Predictions](./VennDiagrammFor_3_techniques_predicted_onco.png)
+![Predictions](/VennDiagrammFor_3_techniques_predicted_onco.png)
 <br>
 <br>
 Full lists of predicted oncogenes can be found in Data/Result_data folder.
