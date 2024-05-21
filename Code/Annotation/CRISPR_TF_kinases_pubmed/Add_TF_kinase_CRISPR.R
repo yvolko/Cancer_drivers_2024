@@ -9,7 +9,7 @@ data <- read.csv("../../../Data/Processed_data/Table_with_pubmed.csv")
 
 # ADD INFORMATION ABOUT TRANSCRIPTIONAL FACTORS
 
-TF <- read.csv("./Human_TFs.txt", sep="\t")
+TF <- read.csv("../../../Data/Raw_data/Human_TFs.txt", sep="\t")
 TF <- TF %>% 
   select("HGNC.symbol", "Is.TF.", "DBD")
 TF <- TF[TF$Is.TF.=="Yes", ]
@@ -47,7 +47,8 @@ data_TF_kinase <- data_TF_kinase %>%
   mutate_at(c("Group_kinase", "Family_kinase"), ~replace_na(.x, "No_data"))
 
 # ADD INFORMATION ABOUT CRISPR SCREENING (Columns: Gene - Rows: ScreenID)
-
+# Please download file from this link https://depmap.org/portal/download/all/?releasename=DepMap+Public+21Q3&filename=CRISPR_gene_effect.csv
+# File is too big for github
 CRISPR <- read.csv("CRISPRGeneEffect.csv")
 CRISPR <- CRISPR[,-1]
 
@@ -76,4 +77,4 @@ data_TF_kinase_CRISPR <- left_join(data_TF_kinase, CRISPR_new, join_by("gene_nam
 
 # EXPORT FINAL DATAFRAME
 
-write.csv(data_TF_kinase_CRISPR, file = "Table_TF_kinase_CRISPR.csv", row.names = FALSE)
+write.csv(data_TF_kinase_CRISPR, file = "../../../Data/Processed_data/Table_TF_kinase_CRISPR.csv", row.names = FALSE)
