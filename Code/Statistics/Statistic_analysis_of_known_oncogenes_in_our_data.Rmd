@@ -36,40 +36,17 @@ setwd(main_dir)
 Read data and leave only regions with known genes (data has been merged with oncogene  containing datasets COSMIC and oncoKB + region thresholding and interval merging is done)
 
 ```{r data import and remove regions without genes}
-data <- read.csv("../Data/Processed_data/Table_expression_COSMIC_oncoKB_merged_intervals.csv")
+data <- read.csv("../../Data/Processed_data/Table_COSMIC_oncoKB_oncogenes_TSG.csv")
 data <- data[data$gene_name!="", ]
 
-cancer_types <- read.csv("../Data/Raw_data/Table_for_cancer_types.csv")
+cancer_types <- read.csv("../../Data/Raw_data/Table_for_cancer_types.csv")
 cancer_types <- cancer_types %>% 
   select("name", "cancer_type")
-data <- left_join(data, cancer_types, join_by("sample" == "name"))
+data <- left_join(data, cancer_types, join_by("sample.x" == "name"))
 ```
 
-Number os samples per cancer type has been precomputed on our data before. Leave only cancer types where at least 20 high copy regions are present:
 
-```{r cancer type selection}
-n_copies_cancer_types <- read.csv("../Data/Raw_data/Number_of_copies_per_sample_for_cancer_type.csv")
-
-summary_samples_cancer <- n_copies_cancer_types %>%
-  group_by(Cancer_type) %>%
-  summarize(
-    samples = sum(Sample_number)
-  ) %>%
-  ungroup()
-
-threshold_of_N_samples <- 20
-cancers_to_keep <- summary_samples_cancer$Cancer_type[summary_samples_cancer$samples >= threshold_of_N_samples]
-
-data <- data[data$cancer_type %in% cancers_to_keep, ]
-```
-
-Note: 17 out of 28 cancer types are left after this step (kept: "BLCA" "BRCA" "CESC" "COAD" "ESCA" "GBM"  "HNSC" "LGG"  "LIHC" "LUAD" "LUSC" "OV"   "PAAD" "SARC" "SKCM" "STAD" "UCEC")
-
-### Let's group data by cancer type and unique regions to see how many genes in our data are labeled as oncogenes:
-- only in COSMIC 
-- only in oncoKB 
-- in both data sets
-- in none of data sets
+### Let's group data by cancer type and unique regions to see how many genes in our data are labeled as oncogenes
 
 ```{r count genes per region and cancer type}
 data$coordinates <- paste(as.character(data$chr), ":", data$startpos, "-", data$endpos)
@@ -77,46 +54,71 @@ data$coordinates <- paste(as.character(data$chr), ":", data$startpos, "-", data$
 count_per_region <- data %>%
   group_by(cancer_type, coordinates) %>%
   summarize(
-    in_COSMIC = sum((Tier.COSMIC == "1" | Tier.COSMIC == "2") & OncoKB.Annotated.oncoKB != "Yes"),
-    in_oncoKB = sum(OncoKB.Annotated.oncoKB == "Yes" & Tier.COSMIC == "No_data"),
-    in_both = sum((Tier.COSMIC == "1" | Tier.COSMIC == "2") & OncoKB.Annotated.oncoKB == "Yes"),
-    nowhere = sum(Tier.COSMIC == "No_data" & (OncoKB.Annotated.oncoKB == "No_data" | OncoKB.Annotated.oncoKB == "No")),
+    n_oncogenes = sum(Role.in.Cancer.COSMIC %in% c("oncogene, fusion", "oncogene") | OncoKB.Annotated.oncoKB == "Yes")
   ) %>%
   ungroup()
 
-count_per_region
+count_per_region$oncogenes <- ifelse(count_per_region$n_oncogenes > 0, 1, 0)
+
+summary_per_region <- count_per_region %>%
+  group_by(cancer_type) %>%
+  summarize(
+    regions_with_at_least_one_oncogene = sum(oncogenes==1),
+    regions_without_oncogenes = sum(oncogenes==0)
+  ) %>%
+  ungroup()
+
+summary_per_region_long <- pivot_longer(summary_per_region, cols = c("regions_with_at_least_one_oncogene", "regions_without_oncogenes"), names_to = "presence_of_oncogenes", values_to = "Regions")
+
+
+colnames(summary_per_region_long)[1] <- 'Cancer type'
+summary_per_region_long$presence_of_oncogenes <- ifelse(summary_per_region_long$presence_of_oncogenes == 'regions_with_at_least_one_oncogene', 'Regions with known oncogene', 'Regions without known oncogene')
+
+ggplot(summary_per_region_long, aes(fill=presence_of_oncogenes, y=Regions, x=`Cancer type`)) + 
+    geom_bar(position=position_fill(reverse = TRUE), stat="identity") +
+  scale_fill_manual(values = c("Regions with known oncogene" = "#53868a", 'Regions without known oncogene' = "#7ac4cd")) +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1))
 ```
 
 This many regions over all cancers got at least one oncogene:
 
 ```{r}
-sum(count_per_region$in_COSMIC>0 | count_per_region$in_oncoKB>0 | count_per_region$in_both>0)
+sum(summary_per_region$regions_with_at_least_one_oncogene)
 ```
 
 This many regions over all cancers got NO oncogenes from COSMIC or oncoKB:
 
 ```{r}
-sum(count_per_region$in_COSMIC==0 & count_per_region$in_oncoKB==0 & count_per_region$in_both==0)
+sum(summary_per_region$regions_without_oncogenes)
 ```
-Let's see how many it is per each cancer type:
+### Let's group data by cancer type and sample to see how many genes in our data are labeled as oncogenes
 
-```{r count genes per region and cancer type summary and graph}
-summary_count_per_region <- count_per_region %>%
+```{r distribution 4}
+cancer_sample_grouped_stats <- data %>%
+  group_by(cancer_type, sample.x) %>%
+  summarize(
+    oncogenes = sum(Role.in.Cancer.COSMIC %in% c("oncogene, fusion", "oncogene") | OncoKB.Annotated.oncoKB == "Yes")
+  )
+
+cancer_sample_grouped_stats$oncogenes <- ifelse(cancer_sample_grouped_stats$oncogenes >0, 1, 0)
+
+summary_per_samples <- cancer_sample_grouped_stats %>%
   group_by(cancer_type) %>%
   summarize(
-    regions_with_oncogene = sum(in_COSMIC>0 | in_oncoKB>0 | in_both>0),
-    regions_without_oncogene = sum(in_COSMIC==0 & in_oncoKB==0 & in_both==0),
+    samples_with_at_least_one_onco = sum(oncogenes==1),
+    samples_without_onco = sum(oncogenes==0)
   ) %>%
   ungroup()
 
-summary_count_per_region
-```
+summary_per_samples_long <- pivot_longer(summary_per_samples, cols = c("samples_with_at_least_one_onco", "samples_without_onco"), names_to = "presence_of_oncogenes", values_to = "Samples")
 
-```{r }
-summary_count_per_region_long <- pivot_longer(summary_count_per_region, cols = c("regions_with_oncogene", "regions_without_oncogene"), names_to = "presence_of_oncogenes", values_to = "regions")
 
-ggplot(summary_count_per_region_long, aes(fill=presence_of_oncogenes, y=regions, x=cancer_type)) + 
+colnames(summary_per_samples_long)[1] <- 'Cancer type'
+summary_per_samples_long$presence_of_oncogenes <- ifelse(summary_per_samples_long$presence_of_oncogenes == 'samples_with_at_least_one_onco', 'Samples with known oncogene', 'Samples without known oncogene')
+
+ggplot(summary_per_samples_long, aes(fill=presence_of_oncogenes, y=Samples, x=`Cancer type`)) + 
     geom_bar(position=position_fill(reverse = TRUE), stat="identity") +
+  scale_fill_manual(values = c("Samples with known oncogene" = "#53868a", 'Samples without known oncogene' = "#7ac4cd")) +
   theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1))
 ```
 
@@ -139,7 +141,7 @@ count_per_region$start <- as.integer(count_per_region$start)
 count_per_region$end <- as.integer(count_per_region$end)
 count_per_region$length <- count_per_region$end - count_per_region$start
 count_per_region <- count_per_region %>%
-  mutate(has_oncogene = ifelse(in_COSMIC > 0 | in_oncoKB > 0 | in_both > 0, "Yes", "No"))
+  mutate(has_oncogene = ifelse(oncogenes > 0, "Yes", "No"))
 count_per_region$ID <- paste(count_per_region$cancer_type, count_per_region$coordinates)
 data$ID <- paste(data$cancer_type, data$coordinates)
 
@@ -163,8 +165,6 @@ ggplot(count_per_region, aes(x=log10(copy_number), color=has_oncogene, fill=has_
   ggtitle("Distributions of copy number of regions with and without known oncogene")
 ```
 
-Remember: there are 3800 regions without oncogene and 2253 with oncogene.
-
 ### Region length vs copy number
 
 
@@ -176,63 +176,55 @@ ggplot(count_per_region, aes(x=log2(length), y=log2(copy_number), color=has_onco
 ### Distribution of number of oncogene per region
 
 ```{r distribution 3}
-count_per_region <- count_per_region %>%
-  mutate(number_of_oncogenes = count_per_region$in_COSMIC+count_per_region$in_oncoKB+count_per_region$in_both)
-
-ggplot(count_per_region, aes(x=number_of_oncogenes)) + 
+ggplot(count_per_region, aes(x=n_oncogenes)) + 
   geom_histogram(binwidth=1) +
   ggtitle("Distributions of number of oncogenes per region")
 ```
 
 ### Distribution of number of oncogene per sample
 
-```{r distribution 4}
+```{r}
 count_per_sample <- data %>%
-  group_by(cancer_type, sample) %>%
+  group_by(cancer_type, sample.x) %>%
   summarize(
-    in_COSMIC = sum((Tier.COSMIC == "1" | Tier.COSMIC == "2") & OncoKB.Annotated.oncoKB != "Yes"),
-    in_oncoKB = sum(OncoKB.Annotated.oncoKB == "Yes" & Tier.COSMIC == "No_data"),
-    in_both = sum((Tier.COSMIC == "1" | Tier.COSMIC == "2") & OncoKB.Annotated.oncoKB == "Yes"),
-    nowhere = sum(Tier.COSMIC == "No_data" & (OncoKB.Annotated.oncoKB == "No_data" | OncoKB.Annotated.oncoKB == "No")),
+    oncogenes = sum(Role.in.Cancer.COSMIC %in% c("oncogene, fusion", "oncogene") | OncoKB.Annotated.oncoKB == "Yes")
   ) %>%
   ungroup()
 
-count_per_sample <- count_per_sample %>%
-  mutate(number_of_oncogenes = count_per_sample$in_COSMIC+count_per_sample$in_oncoKB+count_per_sample$in_both)
 
-ggplot(count_per_sample, aes(x=number_of_oncogenes)) + 
+ggplot(count_per_sample, aes(x=oncogenes)) + 
   geom_histogram(binwidth=1) +
   ggtitle("Distributions of number of oncogenes per sample")
 ```
 
+
 All the exploratory statistic above was base on the oncogens present at least in one of the data bases. 
 
-### If there are multiple regions are they likely to have one or many oncogenes
+### If there are multiple regions in the same sample are they likely to have one or many oncogenes
 
 ```{r }
-data$coordinates <- sub(".*: ", "", data$ID)
-
 cancer_sample_summary <- data %>%
-  group_by(cancer_type, sample, coordinates) %>%
+  group_by(sample.x, cancer_type, coordinates) %>%
   summarize(
-    in_COSMIC = sum((Tier.COSMIC == "1" | Tier.COSMIC == "2") & OncoKB.Annotated.oncoKB != "Yes"),
-    in_oncoKB = sum(OncoKB.Annotated.oncoKB == "Yes" & Tier.COSMIC == "No_data"),
-    in_both = sum((Tier.COSMIC == "1" | Tier.COSMIC == "2") & OncoKB.Annotated.oncoKB == "Yes"),
-    nowhere = sum(Tier.COSMIC == "No_data" & (OncoKB.Annotated.oncoKB == "No_data" | OncoKB.Annotated.oncoKB == "No")),
-    regions_count = n(),
+    n_oncogenes = sum(Role.in.Cancer.COSMIC %in% c("oncogene, fusion", "oncogene") | OncoKB.Annotated.oncoKB == "Yes")
   ) %>%
   ungroup()
 
 cancer_sample_summary <- cancer_sample_summary %>%
-  mutate(oncogenes_total = in_COSMIC + in_oncoKB + in_both)
+  group_by(sample.x, cancer_type) %>%
+  summarize(
+    n_oncogenes = sum(n_oncogenes),
+    n_regions = n()
+  ) %>%
+  ungroup()
 
-cor.test(cancer_sample_summary$regions_count, cancer_sample_summary$oncogenes_total)
+cor.test(cancer_sample_summary$n_regions, cancer_sample_summary$n_oncogenes)
 ```
 
-There seems to be weak correlation between number of regions in the sample and number of oncogenes. Let's see the graph:
+There seems to be moderate correlation between number of regions in the sample and number of oncogenes. Let's see the graph:
 
 ```{r }
-ggplot(cancer_sample_summary, aes(x = regions_count)) +
+ggplot(cancer_sample_summary, aes(x = n_regions)) +
   geom_histogram(binwidth = 1, fill = "skyblue", color = "black", alpha = 0.7) +
   labs(title = "Histogram of Regions Count",
        x = "Regions per Sample Count",
@@ -240,23 +232,15 @@ ggplot(cancer_sample_summary, aes(x = regions_count)) +
 ```
 
 ```{r }
-ggplot(cancer_sample_summary, aes(x = oncogenes_total)) +
+ggplot(cancer_sample_summary, aes(x = n_oncogenes)) +
   geom_histogram(binwidth = 1, fill = "skyblue", color = "black", alpha = 0.7) +
   labs(title = "Histogram of Oncogenes Count",
        x = "Oncogenes per Sample Count",
        y = "Frequency")
 ```
 ```{r}
-my_colors <- c(
-  "#1f78b4", "#33a02c", "#e31a1c", "#ff7f00", "#6a3d9a",
-  "#a6cee3", "#b2df8a", "#fb9a99", "#fdbf6f", "#cab2d6",
-  "#008080", "#d73027", "#4575b4", "#91cf60", "#fee08b",
-  "#313695", "#dd1c77"
-)
-
-ggplot(cancer_sample_summary, aes(x=regions_count, y=oncogenes_total, color=cancer_type)) + 
+ggplot(cancer_sample_summary, aes(x=n_regions, y=n_oncogenes, color=cancer_type)) + 
     geom_point(size=2) +
-    scale_color_manual(values = my_colors) +
     ggtitle("Number of oncogenes per sample vs numer of regions per sample")  
 ```
 
