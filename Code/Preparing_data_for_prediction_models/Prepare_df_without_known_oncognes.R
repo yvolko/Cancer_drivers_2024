@@ -111,4 +111,4 @@ ranked_table <- ranked_table %>%
   mutate(group_num = cur_group_id()) %>%
   ungroup()
 
-write.csv(ranked_table, "../Dats/Processed_data/Selection_of_regions_without_known_oncognes.csv")
+write.csv(ranked_table, "../../Dats/Processed_data/Selection_of_regions_without_known_oncognes.csv")
