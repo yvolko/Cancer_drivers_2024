@@ -3,7 +3,7 @@ library(rbioapi)
 library(dplyr)
 
 
-df <- read.csv('../../Data/Processed_data/Table_expression_COSMIC_oncoKB_merged_intervals.csv')
+df <- read.csv('../../Data/Processed_data/Table_TF_kinase_CRISPR.csv')
 int_net_1 <- rba_string_interactions_network(ids = unique(df$gene_name[1:2000]),
                                            species = 9606,
                                            required_score = 700)

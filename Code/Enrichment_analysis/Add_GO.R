@@ -10,7 +10,7 @@ library(enrichplot)
 library(dplyr)
 
 
-df <- read.csv('../../Data/Processed_data/Table_expression_COSMIC_oncoKB_merged_intervals.csv')
+df <- read.csv('../../Data/Processed_data/Table_TF_kinase_CRISPR.csv')
 
 idx_all <- grch38$symbol %in% df$gene_name
 ids_all <- grch38[idx_all, ]
