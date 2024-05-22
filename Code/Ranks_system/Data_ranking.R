@@ -33,14 +33,19 @@ for (i in 1:length(b$chr)){
   if(b[i,"Role.in.Cancer.COSMIC"] == 'oncogene, TSG, fusion' & b[i, "Is.Oncogene.oncoKB"] == 'Yes'){
     b[i,"Role.in.Cancer.COSMIC"] = 'oncogene'
   }
+  if(b[i,"Role.in.Cancer.COSMIC"] == 'oncogene, TSG, fusion' & b[i, "Is.Oncogene.oncoKB"] != 'Yes'){
+    b[i,"Role.in.Cancer.COSMIC"] = 'No_data'
+  }
 }
 
 for (i in 1:length(b$chr)){
   if(b[i,"Role.in.Cancer.COSMIC"] == 'oncogene, TSG' & b[i, "Is.Oncogene.oncoKB"] == 'Yes'){
     b[i,"Role.in.Cancer.COSMIC"] = 'oncogene'
   }
+  if(b[i,"Role.in.Cancer.COSMIC"] == 'oncogene, TSG' & b[i, "Is.Oncogene.oncoKB"] != 'Yes'){
+    b[i,"Role.in.Cancer.COSMIC"] = 'No_data'
+  }
 }
-duplicated_oncogene <- dplyr::filter(b, Role.in.Cancer.COSMIC == 'oncogene' | Is.Oncogene.oncoKB == 'Yes')$gene_name
 
 # ADD GO RESULTS
 
@@ -100,7 +105,7 @@ new_summary_data <- data.frame()
 for (i in unique(summary_data$chr)){
   sample_df <- dplyr::filter(summary_data, chr == i)
   
-  count_1 <- sum(sample_df$Role.in.Cancer.COSMIC == 'oncogene')
+  count_1 <- sum(sample_df$Role.in.Cancer.COSMIC == 'oncogene' | sample_df$Role.in.Cancer.COSMIC == 'oncogene, fusion')
   count_2 <- sum(sample_df$Is.Oncogene.oncoKB == 'Yes')
   
   if (count_1 <= 1 && count_2 <= 1){
@@ -108,7 +113,8 @@ for (i in unique(summary_data$chr)){
   }
 }
 set.seed(123)
-duplicated_oncogene <- dplyr::filter(new_summary_data, Role.in.Cancer.COSMIC == 'oncogene' | Is.Oncogene.oncoKB == 'Yes')$gene_name
+duplicated_oncogene <- dplyr::filter(new_summary_data, Role.in.Cancer.COSMIC == 'oncogene' | Role.in.Cancer.COSMIC == 'oncogene, fusion'
+                                     | Is.Oncogene.oncoKB == 'Yes')$gene_name
 duplicates <- duplicated_oncogene[duplicated(duplicated_oncogene)]
 
 for (gene in duplicates) {
