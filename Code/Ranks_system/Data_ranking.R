@@ -30,13 +30,13 @@ b$fold=round((2^b$expr)/(2^b$norm_expr),digits = 2)
 # CORRECTION OF DATA ON ONCOGENES
 
 for (i in 1:length(b$chr)){
-  if(b[i,"Role.in.Cancer.COSMIC"] == 'oncogene, TSG, fusion' & b[i, "Is.Oncogene.oncoKB"] != 'Yes'){
+  if(b[i,"Role.in.Cancer.COSMIC"] == 'oncogene, TSG, fusion' & b[i, "Is.Oncogene.oncoKB"] == 'Yes'){
     b[i,"Role.in.Cancer.COSMIC"] = 'oncogene'
   }
 }
 
 for (i in 1:length(b$chr)){
-  if(b[i,"Role.in.Cancer.COSMIC"] == 'oncogene, TSG' & b[i, "Is.Oncogene.oncoKB"] != 'Yes'){
+  if(b[i,"Role.in.Cancer.COSMIC"] == 'oncogene, TSG' & b[i, "Is.Oncogene.oncoKB"] == 'Yes'){
     b[i,"Role.in.Cancer.COSMIC"] = 'oncogene'
   }
 }
