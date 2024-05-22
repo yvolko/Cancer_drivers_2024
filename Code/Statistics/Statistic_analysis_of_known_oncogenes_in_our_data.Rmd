@@ -195,9 +195,15 @@ ggplot(count_per_region, aes(x=log2(length), y=log2(copy_number), color=has_onco
 
 ```{r distribution 3}
 ggplot(count_per_region, aes(x=n_oncogenes)) + 
-  geom_histogram(binwidth=1) +
-  ggtitle("Distributions of number of oncogenes per region")
+  geom_histogram(binwidth=1, fill = "#53868a", color = "black") +
+  ggtitle("Distributions of number of oncogenes per region") +
+  labs(x = "Number of oncogenes") +
+  theme_classic()
 ```
+```{r}
+median(count_per_region$n_oncogenes)
+```
+
 
 ### Distribution of number of oncogene per sample
 
@@ -211,8 +217,13 @@ count_per_sample <- data %>%
 
 
 ggplot(count_per_sample, aes(x=oncogenes)) + 
-  geom_histogram(binwidth=1) +
-  ggtitle("Distributions of number of oncogenes per sample")
+  geom_histogram(binwidth=1, fill = "#53868a", color = "black") +
+  ggtitle("Distributions of number of oncogenes per sample") +
+  labs(x = "Number of oncogenes") +
+  theme_classic()
+```
+```{r}
+median(count_per_sample$oncogenes)
 ```
 
 
