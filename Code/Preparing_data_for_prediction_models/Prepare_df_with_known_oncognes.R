@@ -143,4 +143,4 @@ ranked_table$SUM_RANK <- rowSums(ranked_table[, c(9:17)])
 
 
 # SAVE DATA 
-write.csv(ranked_table, "../Data/Processed_data/Selection_of_regions_for_ML.csv")
+write.csv(ranked_table, "../../Data/Processed_data/Selection_of_regions_for_ML.csv")
