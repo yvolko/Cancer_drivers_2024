@@ -5,142 +5,64 @@ library(dplyr)
 # PREPARE DATA FOR MACHINE LEARNING
 # IMPORT DATA SET
 
-all_data <- read.csv("../../Data/Processed_data/df_with_GO_and_PPI.csv", sep="\t")
+all_data <- read.csv('../../Data/Processed_data/Table_with_rank_filtering_by_oncogene.csv')
+
+# CHECK HOW MANY ONCOGENES PER REGION IS PRESENT 
+all_data_summary <- all_data %>%
+  group_by(chr) %>%
+  summarise(
+    n_oncogenes = sum(Role.in.Cancer.COSMIC %in% c("oncogene", "oncogene, fusion") | Is.Oncogene.oncoKB == "Yes")
+  )
+
+# AS WE WANT TO KEEP ONLY ONE ONCOGENE PER REGION FOR TRAINING ML MODELS, FILTER OUT SOME REGIONS
+all_data <- all_data %>% filter(chr != 'TCGA-BH-A18H_19_49883144_50486952')
+all_data <- all_data %>% filter(chr != 'TCGA-DX-A48N_12_104506195_105465257')
+
 
 all_data$is_oncogene <- ifelse(all_data$Is.Oncogene.oncoKB == "Yes" | 
-                                 all_data_GO_PPI$Role.in.Cancer.COSMIC %in% 
-                                 c("oncogene, TSG, fusion", "oncogene, fusion", 
-                                   "oncogene, TSG", "oncogene"), 1, 0)
+                                 all_data$Role.in.Cancer.COSMIC %in% 
+                                 c("oncogene, fusion", "oncogene"), 1, 0)
 
 # SELECT ONLY REGIONS HAVING ONCOGENES
 data <- all_data %>%
-  group_by(chr, startpos, endpos) %>%
+  group_by(chr) %>%
   filter(any(is_oncogene == 1)) %>%
   ungroup()
 
 # REMOVE COLUMNS THAT WE WONT NEED IN ML
-data$X <- NULL
-data$nMinor <- NULL
-data$CNclass <- NULL
-data$CNsignatureMapping <- NULL
-data$ENS_id <- NULL
-data$sample_type <- NULL
-data$Tier.COSMIC <- NULL
-data$Hallmark.COSMIC <- NULL
-data$Role.in.Cancer.COSMIC <- NULL
-data$Primary_disease <- NULL
-data$Mutation.Types.COSMIC <- NULL
-data$Translocation.Partner.COSMIC <- NULL
-data$Is.Oncogene.oncoKB <- NULL
-data$Is.Tumor.Suppressor.Gene.oncoKB <- NULL
-data$OncoKB.Annotated.oncoKB <- NULL
-data$oncogene_sum <- NULL
+data <- data[, -c(1, 3, 4, 5, c(7:21))]
 
-# MAKE FOLD CHANGE OF EXPRESSION. Current units are log2(TPM + 0.001)
-data$expr_fold_change <- round((2^data$expr)/(2^data$norm_expr), digits = 2)
-
-# SELECT ONLY ONE REGION PER ONCOGENE
-# ADDITIONALLY REMOVE REGIONS WITH MORE THAN 1 ONCOGENE
-data_unique <- data %>% 
-  group_by(chr, startpos, endpos) %>%
-  mutate(num_oncogenes = sum(is_oncogene)) %>%
-  ungroup()
-
-data <- data_unique %>% 
-  group_by(chr, startpos, endpos) %>%
-  filter(any(num_oncogenes == 1)) %>%
-  ungroup()
-
-data$num_oncogenes <- NULL
-
-# Leave only one region per unique oncogene
-oncogenes <- data[data$is_oncogene == 1, ]
-oncogene_count <- table(oncogenes$gene_name)
-oncogenes <- unique(oncogenes$gene_name)
-
-result_list <- list()
-
-# For all the oncogenes select only first region
-for(oncogene in oncogenes) {
-  # Filter data for the current gene
-  gene_data <- data %>%
-    group_by(chr, startpos, endpos) %>%
-    filter(gene_name == oncogene) %>%
-    ungroup()
-  
-  # Keep only the first row
-  gene_first <- gene_data %>%
-    slice(1)
-  
-  # Store the result in the list
-  result_list[[oncogene]] <- gene_first
-}
-
-result_df <- do.call(rbind, result_list)
- 
-# Select respective regions from our data
-result_df$coordinates <- paste(result_df$chr, result_df$startpos, result_df$endpos)
-coordinates <- result_df$coordinates
-data$coordinates <- paste(data$chr, data$startpos, data$endpos)
-
-final_df <- data[data$coordinates %in% coordinates, ]
-final_df$coordinates <- NULL
+# RENAME SOME COLUMNS
+colnames(data) <- c("ID", "gene_name", "rank_expr", "rank_pubmed_mean", "rank_tf", "rank_kinase",
+                    "rank_crisp_mean", "rank_crisp_min", "rank_expr_fold_change", "rank_is_TSG",
+                    "rank_GO_term", "rank_PPI", "sum_of_ranks", "is_oncogene")
 
 
-# TURN FEATURE INTO RANKS
-# ADDITIONALLY NORMALIZE RANKS WITHIN REGIONS
-final_df$is_kinase=ifelse(final_df$Family_kinase != "No_data","Yes","No")
-final_df$Group_kinase <- NULL
-final_df$Family_kinase <- NULL
-
-final_df$pubmed_sum <- rowSums(final_df[, c("pubmed_cancer", "pubmed_growth", "pubmed_prolifiration", "pubmed_migration", "pubmed_invasion")])
-final_df$pubmed_cancer <- NULL
-final_df$pubmed_growth <- NULL
-final_df$pubmed_prolifiration <- NULL
-final_df$pubmed_migration <- NULL
-final_df$pubmed_invasion <- NULL
-
-final_df$Is.TF. <- ifelse(final_df$Is.TF. != "No_data","Yes","No")
-final_df$DBD <- NULL
-
-final_df$norm_expr <- NULL
-final_df$expr <- NULL
-
-ranked_table <- final_df %>%
-  group_by(sample, chr, startpos, endpos) %>%
+# WE ALREADY HAVE RANKS
+# NOW WE NORMALIZE RANKS WITHIN REGION
+norm_ranked_table <- data %>%
+  group_by(ID) %>%
   mutate(
-    rank_expr_fold_change = round((rank(expr_fold_change) / n()), 2),
-    rank_pubmed_sum = round((rank(pubmed_sum) / n()), 2),
-    rank_TF = round((rank(Is.TF.) / n()), 2),
-    rank_median.CRISPR = round((rank(desc(median.CRISPR)) / n()), 2),
-    rank_mean.CRISPR = round((rank(desc(mean.CRISPR)) / n()), 2),
-    rank_min.CRISPR = round((rank(desc(min.CRISPR)) / n()), 2),
-    rank_kinase = round((rank(is_kinase) / n()), 2),
-    rank_pubmed_mean = round((rank(pubmed_mean) / n()), 2),
-    rank_GO_terms = round((rank(GO_terms) / n()), 2),
-    rank_PPI = round((rank(PPI_count) / n()), 2)
+    rank_expr_norm = round((rank_expr / n()), 2),
+    rank_pubmed_mean_norm = round((rank_pubmed_mean / n()), 2),
+    rank_tf_norm = round((rank_tf / n()), 2),
+    rank_kinase_norm = round((rank_kinase / n()), 2),
+    rank_crisp_mean_norm = round((rank_crisp_mean / n()), 2),
+    rank_crisp_min_norm = round((rank_crisp_min / n()), 2),
+    rank_expr_fold_change_norm = round((rank_expr_fold_change / n()), 2),  
+    rank_is_TSG_norm = round((rank_is_TSG / n()), 2), 
+    rank_GO_term_norm = round((rank_GO_term / n()), 2),
+    rank_PPI_norm = round((rank_PPI / n()), 2)
   ) %>%
   ungroup()
 
 # REMOVE UNNECESSARY COLUMNS
-ranked_table$Is.TF. <- NULL
-ranked_table$median.CRISPR <- NULL
-ranked_table$mean.CRISPR <- NULL
-ranked_table$min.CRISPR <- NULL
-ranked_table$sd.CRISPR <- NULL
-ranked_table$expr_fold_change <- NULL
-ranked_table$is_kinase <- NULL
-ranked_table$pubmed_sum <- NULL
-ranked_table$PPI_count <- NULL
-ranked_table$GO_terms <- NULL
-ranked_table$pubmed_mean <- NULL
+norm_ranked_table <- norm_ranked_table[, -c(3:12)]
 
-# Removed as it is the same as pubmed mean
-ranked_table$rank_pubmed_sum <- NULL
-
-# MAKE ADDITIONAL FEATURE THAT IS SUM OF ALL RANKS
-ranked_table$SUM_RANK <- rowSums(ranked_table[, c(9:17)])
-
+# WE HAVE FEATURE SUM_OF_RANKS, HOWEVER TO MAKE IT ALSO NORMALIZED WITHIN THE REGIONL LET'S MAKE SUM OF NORMALIZED RANKS
+norm_ranked_table$SUM_RANK <- rowSums(norm_ranked_table[, c(5:14)])
+norm_ranked_table$sum_of_ranks <- NULL
+norm_ranked_table <- norm_ranked_table[, c(1, 2, c(4:14), 3)]
 
 # SAVE DATA 
-write.csv(ranked_table, "../../Data/Processed_data/Selection_of_regions_for_ML.csv")
+write.csv(norm_ranked_table, "../../Data/Processed_data/Selection_of_regions_for_ML_with_known_oncogenes.csv")
