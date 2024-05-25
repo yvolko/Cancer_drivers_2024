@@ -147,3 +147,14 @@ for (i in unique(new_summary_data$chr)){
 write.table(unique(summary_data_not_oncogene$gene_name), '../../Data/Result_data/Oncogenes_from_ranks.txt', quote = FALSE, 
             row.names = FALSE, col.names = FALSE)
 
+# ALSO COUNT HOW MANY TIMES EACH GENE WAS PREDICTED AS ONCOGENE AND ITS AVERAGE RANK
+
+counts_of_genes <- summary_data_not_oncogene %>%
+  group_by(gene_name) %>%
+  summarise(
+    rank = round(sum(rank)/n(), 1),
+    count = n()
+  ) %>%
+  ungroup()
+
+write.csv(counts_of_genes, '../../Data/Result_data/Ranks_no_TSG.csv')

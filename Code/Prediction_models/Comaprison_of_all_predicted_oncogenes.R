@@ -5,40 +5,39 @@ library(VennDiagram)
 # From all the prediction genes labeled as TSG in COSMIC and oncoKB are removed
 
 # RANKS
-ranks <- read.csv("../../Data/Result_data/Ranks_no_TSG.csv", sep=" ")
+ranks <- read.csv("../../Data/Result_data/Oncogenes_from_ranks.txt", header = F)
+oncogenes_from_ranks <- unique(ranks$V1)
 
-oncogenes_from_ranks <- unique(ranks$gene_name)
-#writeLines(oncogenes_from_ranks, '../../Data/Result_data/Oncogenes_from_ranks.txt')
+# RANDOM FOREST CLASSIFIER
+prediction_prob_RFclf <- read.csv("../../Data/Result_data/Predictions_by_RandomForestClassifier.csv")
+prediction_prob_RFclf <- prediction_prob_RFclf[, c(2, 3, 16)] 
 
-# RANDOM FOREST CLASSIFIER WITH PROBABILITIES
-prediction_prob_df <- read.csv("../../Data/Result_data/Predictions_by_RandomForestClassifier.csv")
-prediction_prob_df$Unnamed..0 <- NULL  
-
-# Select only genes that are having probability of >= 0.9 
-prediction_prob_df <- prediction_prob_df[prediction_prob_df$prob_of_onco >= 0.9, ]
+# Select only genes that are having probability of >= 0.89 
+prediction_prob_RFclf <- prediction_prob_RFclf[prediction_prob_RFclf$prob_of_onco >= 0.89, ]
 
 # Count how many time each gene is present 
-summary_prob_pred <- prediction_prob_df %>%
+summary_prob_pred <- prediction_prob_RFclf %>%
   group_by(gene_name) %>%
   summarise(count = n()) %>%
   ungroup()
 
-oncogenes_from_RF <- unique(prediction_prob_df$gene_name)
+oncogenes_from_RF <- unique(prediction_prob_RFclf$gene_name)
 oncogenes_from_RF <- oncogenes_from_RF[oncogenes_from_RF != ""]
 
-# Also count how many time gene was predicted as ocogenes in different samples
-summary_per_sample <- prediction_prob_df %>%
-  group_by(sample)  %>%
-  summarise(count = n(),
-            gene_names = paste(unique(gene_name), collapse = ", ")) %>%
-  ungroup()
-  
-summary_per_sample_2 <- prediction_prob_df %>%
+# Also count how many time gene was predicted as oncogenes in different samples
+RFclf_samples <- prediction_prob_RFclf %>%
+  separate(ID, into = c("sample", "rest"), sep = "_", extra = "drop") %>%
+  select(sample) %>%
+  rename(column = sample)
+
+prediction_prob_RFclf$sample <- RFclf_samples
+
+summary_per_sample_2 <- prediction_prob_RFclf %>%
   group_by(gene_name) %>%
   summarise(count = n_distinct(sample)) %>%
   ungroup()
 
-#writeLines(oncogenes_from_RF, '../../Data/Result_data/Oncogenes_from_RF.txt')
+# writeLines(oncogenes_from_RF, '../../Data/Result_data/Oncogenes_from_RF.txt')
 
 # ENSEMBLE
 ensemble_predictions <- read.csv('../../Data/Result_data/Prediction_by_ensemble.csv')
@@ -51,7 +50,7 @@ ens_summary <- ensemble_predictions %>%
 # Extract gene names
 
 oncogenes_from_ensemble <- unique(ensemble_predictions$gene_name)
-#writeLines(oncogenes_from_ensemble, '../../Data/Result_data/Oncogenes_from_ensemble.txt')
+# writeLines(oncogenes_from_ensemble, '../../Data/Result_data/Oncogenes_from_ensemble.txt')
 
 # COMAPARE SETS OF PUTATIVE ONCOGENES FROM DIFFERENT TECHNIQUES
 oncogenes_from_ranks
@@ -75,9 +74,13 @@ grid.draw(VennDiagramm)
 overlap <- intersect(oncogenes_from_ranks, oncogenes_from_RF)
 
 # Save this list of oncognes
-#writeLines(overlap, 'Oncogenes_predicted_by_all_3_models.txt')
+# writeLines(overlap, '../../Data/Result_data/Oncogenes_predicted_by_all_3_models.txt')
 
-overlap_of_ranks <- ranks[ranks$gene_name %in% overlap, c(1,3)]
+# GET TABLE FOR RANKS WITH COUNTS
+ranks_with_counts <- read.csv('../../Data/Result_data/Ranks_no_TSG.csv')
+
+# SELECT ONLY RELEVANT GENES AND COLUMNS
+overlap_of_ranks <- ranks_with_counts[ranks_with_counts$gene_name %in% overlap, c(2,4)]
 overlap_of_RF <- summary_prob_pred[summary_prob_pred$gene_name %in% overlap, ]
 overlap_of_Ens <- ens_summary[ens_summary$gene_name %in% overlap, ]
 
@@ -90,14 +93,9 @@ overlap_counts <- left_join(overlap_counts, overlap_of_Ens)
 
 overlap_counts$total_counts <- with(overlap_counts, count_Ranks + count_RF + count_Ens)
 
-# Sort by counts
-overlap_counts <- overlap_counts[order(overlap_counts$total_counts), ]
-
-# Reset row indexes
-rownames(overlap_counts) <- NULL
 
 # Add data on how often genes were present in the inintial dataset
-initial_intervals <- read.csv('../../Data/Processed_data/Selection_of_regions_without_known_oncognes.csv')
+initial_intervals <- read.csv('../../Data/Processed_data/Selection_of_regions_for_ML_without_known_oncogenes.csv')
 initial_intervals <- initial_intervals[initial_intervals$gene_name != "",]
 
 count_of_genes_in_initial_int <- initial_intervals %>%
@@ -115,5 +113,5 @@ overlap_counts_with_gene_freq$count_RF_frequency_in_df <-
 overlap_counts_with_gene_freq$count_Ens_frequency_in_df <- 
   round(overlap_counts_with_gene_freq$count_Ens / overlap_counts_with_gene_freq$frequency_in_df, 2)
 
-# write.csv(overlap_counts_with_gene_freq, '../../Data/Result_data/Overlap_counts_with_gene_freq.csv')
+write.csv(overlap_counts_with_gene_freq, '../../Data/Result_data/Overlap_counts_with_gene_freq.csv')
 
