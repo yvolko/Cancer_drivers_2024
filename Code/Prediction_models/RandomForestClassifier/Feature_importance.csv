@@ -1,0 +1,11 @@
+feature_name,importance
+pubmed_mean_rank_norm,0.2046370218059335
+tf_rank_norm,0.039418895475723956
+kinase_rank_norm,0.05162902579680319
+crisp_mean_rank_norm,0.0382099928040598
+crisp_min_rank_norm,0.041549686038848746
+GO_rank_norm,0.09496586860086433
+PPI_rank_norm,0.360023102347547
+expr_rank_norm,0.03526935570016573
+expr_fold_rank_norm,0.0236656913566195
+sum_of_normalized_ranks,0.11063136007343422
