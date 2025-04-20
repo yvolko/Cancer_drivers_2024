@@ -1,0 +1,17 @@
+METAPRISM
+
+Bladder Cancer              "Bladder"
+Breast Cancer               "Breast"
+Cancer of Unknown Primary    NA
+Cervical Cancer             "Cervix Uteri"  
+Colorectal Cancer           "Colon"
+Esophagogastric Cancer      "Esophagus"
+Head and Neck Cancer	    ("Oropharynx, NOS" - "Esophagus"; "Parotid gland" - "Salivary Gland", "Tongue, NOS" - "Esophagus")
+Hepatobiliary Cancer         NA
+Non-Small Cell Lung Cancer  "Lung"
+Ovarian Cancer              "Ovary"
+Pancreatic Cancer           "Pancreas"
+Prostate Cancer             "Prostate"
+Salivary Gland Cancer       "Salivary Gland"
+Soft Tissue Sarcoma         "Blood Vessel"
+

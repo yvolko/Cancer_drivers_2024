@@ -1,0 +1,49 @@
+METAPRISM (unique(METAPRISM_df_with_expr$Cancer.Type))
+
+Bladder Cancer              "Bladder"
+Breast Cancer               "Breast"
+Cancer of Unknown Primary    NA
+Cervical Cancer             "Cervix Uteri"  
+Colorectal Cancer           "Colon"
+Esophagogastric Cancer      "Esophagus"
+Head and Neck Cancer	    ("Oropharynx, NOS" - "Esophagus"; "Parotid gland" - "Salivary Gland", "Tongue, NOS" - "Esophagus")
+Hepatobiliary Cancer         NA
+Non-Small Cell Lung Cancer  "Lung"
+Ovarian Cancer              "Ovary"
+Pancreatic Cancer           "Pancreas"
+Prostate Cancer             "Prostate"
+Salivary Gland Cancer       "Salivary Gland"
+Soft Tissue Sarcoma         "Blood Vessel"
+
+
+
+MET500 (unique(MET500_df$Primary_Site_and_Subsite))
+
+"Bladder - Bladder, NOS"    -> "Bladder"   
+"Breast - Breast, NOS"     ->  "Breast"  
+
+"Connective, subcutaneous and other soft tissues - Connective tissue leg"  
+	(Histological types     "Undifferentiated pleomorphic sarcoma" 	  -> NA												"Dedifferentiated liposarcoma"            -> "Adipose Tissue"
+				"Soft tissue myoepithelial carcinoma" )   -> NA 
+
+"Esophagus - Esophagus, NOS"    ->   "Esophagus"    
+"Colon - Colon, NOS"            ->   "Colon"    
+"Prostate gland - Prostate gland"  -> "Prostate"    
+"Ureter - Ureter"                -> "Bladder"
+"Other and unspecified parts of biliary tract - Extrahepatic bile duct"         -> NA
+"Unknown - Unknown primary site"     ---- NA
+"Other and unspecified parts of mouth - Mouth, NOS"  (Histological  type Squamous cell carcinoma, NOS)   ->  "Esophagus"
+"Bronchus and lung - Lung, NOS"    ->   "Lung" 
+"Other and unspecified parts of tongue - Tongue, NOS" (Squamous cell carcinoma, NOS)   -> "Esophagus"
+"Gallbladder - Gallbladder"             -> NA
+"Brain - Brain, NOS"               -> "Brain 
+"Adrenal gland - Adrenal gland"           -> "Adrenal Gland"
+"Connective, subcutaneous and other soft tissues - Connective tissue abdomen"  (Dedifferentiated liposarcoma)  -> "Adipose Tissue"   
+"Retroperitoneum and peritoneum - Retroperitoneum"  (High-grade sarcoma, Dedifferentiated liposarcoma)        -> "Adipose Tissue"       
+"Accessory sinuses - Accessory sinus, NOS"                       -> NA
+"Other and unspecified parts of biliary tract - Ampulla of Vater"  (Carcinoma, NOS)           -> "Small Intestine"     
+"Testis - Testis, NOS"     -> "Testis"
+"Ovary - Ovary"           -> "Ovary"
+"Connective, subcutaneous and other soft tissues - Connective, subcutaneous and other soft tissues, NOS" (Gastrointestinal stromal tumor)  -> NA   
+"Stomach - Stomach, NOS"       ->  "Stomach"
+"Bones, joints and articular cartilage - Upper limb long bones, joints"    (Osteosarcoma)  -> NA

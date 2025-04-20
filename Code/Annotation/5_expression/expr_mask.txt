@@ -1,0 +1,39 @@
+HARTWIG	GTEX
+Colorectum	Colon
+Vulva	NA
+Esophagus	Esophagus
+Bile duct	NA
+Pancreas	Pancreas
+Ovary	Ovary
+Uterus	Uterus
+Anus	Colon
+Prostate	Prostate
+Urothelial tract	Bladder
+Bone/Soft tissue	NA
+Lung	Lung
+Thyroid gland	Thyroid
+Breast	Breast
+Gallbladder	NA
+Nervous system	Brain
+Rectum	Colon
+Esophagus/gastroesophageal junction	NA
+Colon	Colon
+Soft tissue	NA
+Biliary tract	NA
+Stomach	Stomach
+Bladder	Bladder
+Skin	Skin
+Liver	Liver
+Kidney	Kidney
+Mesothelium	NA
+Head and neck	NA
+Small intestine	Small Intestine
+Appendix	Colon
+Fallopian tube	Fallopian Tube
+Gastroesophageal	NA
+Testis	Testis
+Penis	NA
+Vagina	Vagina
+Adrenal gland	Adrenal Gland
+Lymphoid tissue	NA
+Eye	NA
